@@ -1,0 +1,62 @@
+---
+title: "UTS DMKM"
+output: word_document
+---
+
+```{r}
+dataset<-read.csv(file.choose(), header = T)
+colnames(dataset)<-c("alcohol", "malic_acid", "ash", "alcalinity_ash", "magnesium", "total_phenols", "Flavanoids", "nonflavanoid_phenols", "proanthocyanins","color_intensity","hue","diluted_wines", "proline")
+str(dataset)
+dataset$alcohol<-as.factor(dataset$alcohol)
+head(dataset)
+dataset<-dataset[,-14]
+head(dataset)
+#menentukan sampel dan data test
+set.seed(123)
+sampel<-sample(2,nrow(dataset), replace = T, prob = c(0.8,0.2))
+traindat<-dataset[sampel==1,]
+testdat<-dataset[sampel==2, ]
+
+library(party)
+library(psych)
+library(caret)
+library(randomForest)
+library(dplyr)
+modelRf<-randomForest( alcohol ~ . , data=traindat)
+modelRf
+summary(modelRf)
+# prediksi dan validasi dengan split validation
+pred_rf <- predict(modelRf, newdata = testdat)
+confusionMatrix(pred_rf %>% as.factor(), testdat$alcohol %>% as.factor())
+varImpPlot(modelRf)
+```
+
+Pada confusion matrix terlihat pada tingkat akurasi sebesar 1, artinya model secara keseluruhan, model dapat mengklasifikasikan semua data testing secara benar. Tingkat Sensitifity/Recall pada class 1 sebesar 1, artinya dari 11 kelompok 1, 11 atau semua data berhasil diprediksi dengan benar oleh model begitu juga dengan class 2 dan 3. Tingkat specificity pada class 1 sebesar 1, artinya dari 11 kelompok selain class 1, 11 atau semua data berhasil diprediksi dengan benar oleh. Tingkat presisi sebesar 1 pada class 1, artinya dari 11 prediksi positif pada pada class 1, 11 atau semua data berhail diprediksi dengan benar oleh model. Nilai F-1 score merupakan rata-rata harmonik dari recall dan presisi sebesar 1 yang menunjukkan model sangat bagus.
+
+```{r}
+set.seed(123)
+sampel2<-sample(2,nrow(dataset), replace = T, prob = c(0.8,0.2))
+traindat2<-dataset[sampel2==1,]
+testdat2<-dataset[sampel2==2, ]
+library(naivebayes)
+modelNav<-naive_bayes(alcohol ~ . , data=traindat2)
+modelNav
+summary(modelNav)
+prediksi <-predict(modelNav, testdat2)
+confusionMatrix(table(prediksi, testdat2$alcohol))
+```
+```{r}
+#membandingkan kedua model dengan ROC/AUC
+library(pROC)
+
+par(pty="s") 
+
+rfROC <- roc(ifelse(testdat$alcohol == "1", 1 , ifelse(testdat$alcohol == "2", 2,3)), ifelse(pred_rf == "1", 1 , ifelse(pred_rf == "2", 2,3)), plot=TRUE, print.auc=TRUE, col="green", lwd =4, legacy.axes=TRUE, main="ROC Curves")
+
+navROC <- roc(ifelse(testdat$alcohol == "1", 1 , ifelse(testdat$alcohol == "2", 2,3)), ifelse(prediksi == "1", 1 , ifelse(prediksi == "2", 2,3)), plot=TRUE, print.auc=TRUE, col="green", lwd =4, legacy.axes=TRUE, main="ROC Curves")
+
+
+legend("bottomright", legend=c("Random Forest","Naive Bayes"),col=c("green", "blue"),lwd=4)
+```
+
+Terlihat kedua model sama bagus karena kurva mendekati titk (0,1).
